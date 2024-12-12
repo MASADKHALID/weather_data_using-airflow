@@ -1,0 +1,70 @@
+create rds
+   create database==>standard,postgresql,rdsname,passward,public access=yes,new pc
+create ec2
+   name,ubuntu,t2medium,allow both
+   security==>inbound rules==>postgresql,5432,anywhere
+connect instance in own terminal
+   sudo apt update
+   sudo apt install python3-pip
+   sudo apt install python3.12-venv
+   python3 -m venv airflow_venv
+   source airflow_venv/bin/activate
+   pip install pandas 
+   sudo apt install s3fs
+   pip install fsspec
+   pip install apache-airflow
+   airflow standalone
+   pip install apache-airflow-providers-postgres
+
+
+
+aws iam create-policy \
+   --policy-name rds-s3-import-policy \
+   --policy-document '{
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "s3import",
+         "Action": [
+           "s3:GetObject",
+           "s3:ListBucket"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+           "arn:aws:s3:::s3-pp-asad", 
+           "arn:aws:s3:::s3-pp-asad"
+         ] 
+       }
+     ] 
+   }'  
+
+aws iam create-role \
+   --role-name rds-s3-import-role \
+   --assume-role-policy-document '{
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Principal": {
+            "Service": "rds.amazonaws.com"
+          },
+         "Action": "sts:AssumeRole",
+         "Condition": {
+             "StringEquals": {
+                "aws:SourceAccount": "111122223333",
+                "aws:SourceArn": "arn:aws:rds:us-east-1:111122223333:db:dbname"
+                }
+             }
+       }
+     ] 
+   }'
+
+aws iam attach-role-policy \
+   --policy-arn arn:aws:iam::051826727147:policy/rds-s3-import-policy \
+   --role-name postgresql-S3-Role-yml-4 
+
+aws rds add-role-to-db-instance \
+   --db-instance-identifier etl-pp-asad  \
+   --feature-name s3Import \
+   --role-arn arn:aws:iam::051826727147:role/postgresql-S3-Role-yml-4   \
+   --region us-east-1                               
